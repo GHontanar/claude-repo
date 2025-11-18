@@ -69,58 +69,72 @@ Aplicación web segura para la gestión y seguimiento de pacientes con enfermeda
 └── README.md               # Este archivo
 ```
 
-## Requisitos del Sistema
+## Instalación (Recomendado: Docker)
 
+### 🐳 Instalación con Docker (Más Fácil)
+
+**Solo 2 pasos:**
+
+```bash
+# 1. Clonar repositorio
+git clone <repository-url>
+cd claude-repo
+
+# 2. Ejecutar instalador
+./install.sh
+```
+
+**¡Listo!** Accede a http://localhost
+
+El script instalará Docker automáticamente si no lo tienes y levantará toda la aplicación (MySQL + Backend + Frontend).
+
+**Comandos útiles:**
+```bash
+./backup.sh        # Crear backup de la base de datos
+./update.sh        # Actualizar la aplicación
+./restore.sh       # Restaurar desde un backup
+docker compose logs -f  # Ver logs en tiempo real
+```
+
+📖 **[Guía Completa de Docker](docs/DOCKER.md)**
+
+---
+
+### 📦 Instalación Manual (Avanzado)
+
+Si prefieres instalación nativa sin Docker:
+
+**Requisitos:**
 - **Node.js**: v18.x o superior
 - **MySQL**: v8.0 o superior
 - **npm**: v9.x o superior
-- **Navegador moderno**: Chrome, Firefox, Safari, Edge (últimas versiones)
 
-## Instalación Rápida
+**Pasos:**
 
-### 1. Clonar el repositorio
-```bash
-git clone <repository-url>
-cd claude-repo
-```
+1. **Configurar Base de Datos**
+   ```bash
+   mysql -u root -p < sql/schema.sql
+   mysql -u root -p < sql/seed.sql
+   ```
 
-### 2. Configurar Backend
-```bash
-cd backend
-npm install
-cp .env.example .env
-# Editar .env con tus configuraciones
-```
+2. **Backend**
+   ```bash
+   cd backend
+   npm install
+   cp .env.example .env
+   # Editar .env con tus configuraciones
+   npm start
+   ```
 
-### 3. Configurar Base de Datos
-```bash
-mysql -u root -p < sql/schema.sql
-mysql -u root -p < sql/seed.sql
-```
+3. **Frontend**
+   ```bash
+   cd frontend
+   npm install
+   cp .env.example .env
+   npm run dev
+   ```
 
-### 4. Configurar Frontend
-```bash
-cd frontend
-npm install
-cp .env.example .env
-# Editar .env con la URL del backend
-```
-
-### 5. Ejecutar la Aplicación
-
-**Backend:**
-```bash
-cd backend
-npm start
-# Servidor en http://localhost:3000
-```
-
-**Frontend:**
-```bash
-cd frontend
-npm run dev
-# Aplicación en http://localhost:5173
-```
+📖 **[Guía Completa de Instalación Manual](docs/DEPLOYMENT.md)**
 
 ## Uso Básico
 
@@ -180,11 +194,12 @@ NHC,Diagnosticos,Fecha
 
 ## Documentación Adicional
 
+- **[🐳 Docker Guide](docs/DOCKER.md)**: Instalación y uso con Docker (RECOMENDADO)
 - **[Arquitectura del Sistema](docs/ARCHITECTURE.md)**: Diseño técnico detallado
 - **[API Documentation](docs/API_DOCUMENTATION.md)**: Endpoints y ejemplos
 - **[Database Schema](docs/DATABASE_SCHEMA.md)**: Estructura de tablas
 - **[Development Guide](docs/DEVELOPMENT.md)**: Guía para desarrolladores
-- **[Deployment Guide](docs/DEPLOYMENT.md)**: Instalación en producción
+- **[Deployment Guide](docs/DEPLOYMENT.md)**: Instalación manual en producción
 
 ## Soporte y Mantenimiento
 
