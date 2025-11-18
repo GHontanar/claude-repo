@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS pacientes (
   fecha_ultimo_seguimiento DATE NOT NULL COMMENT 'Fecha de la última consulta médica',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Fecha de creación del registro',
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Última actualización del registro',
-  CONSTRAINT chk_diagnosticos_not_empty CHECK (JSON_LENGTH(diagnosticos) > 0) COMMENT 'Validar que diagnosticos no esté vacío'
+  CONSTRAINT chk_diagnosticos_not_empty CHECK (JSON_LENGTH(diagnosticos) > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Pacientes en seguimiento';
 
 -- =====================================================
