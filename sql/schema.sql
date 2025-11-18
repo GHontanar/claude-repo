@@ -49,7 +49,8 @@ CREATE INDEX idx_fecha ON pacientes(fecha_ultimo_seguimiento);
 
 -- Índice multi-valor para búsquedas por diagnóstico (MySQL 8.0.17+)
 -- Si la versión de MySQL es anterior, comentar esta línea
-CREATE INDEX idx_diagnosticos ON pacientes((CAST(diagnosticos AS CHAR(1000) ARRAY)));
+-- COMENTADO: La sintaxis ARRAY no está soportada en MySQL 8.0.44
+-- CREATE INDEX idx_diagnosticos ON pacientes((CAST(diagnosticos AS CHAR(1000) ARRAY)));
 
 -- =====================================================
 -- Usuario administrador por defecto
