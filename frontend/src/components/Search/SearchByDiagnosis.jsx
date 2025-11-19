@@ -1,9 +1,9 @@
 /**
  * Search By Diagnosis Component
- * Búsqueda de pacientes por código ORPHA
+ * Búsqueda de pacientes por código ORPHA con autocomplete inteligente
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Paper,
   TextField,
@@ -13,49 +13,69 @@ import {
   Alert,
   CircularProgress,
   Chip,
-  Autocomplete
+  Autocomplete,
+  Tooltip
 } from '@mui/material';
-import { Search, LocalHospital } from '@mui/icons-material';
+import { Search, LocalHospital, Info as InfoIcon } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
-import { patientsAPI } from '../../services/api';
+import api from '../../services/api';
 import ExportButton from '../Common/ExportButton';
 
 export default function SearchByDiagnosis() {
-  const [diagnostico, setDiagnostico] = useState('');
+  const [selectedCode, setSelectedCode] = useState(null);
+  const [inputValue, setInputValue] = useState('');
+  const [options, setOptions] = useState([]);
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingOptions, setLoadingOptions] = useState(false);
   const [error, setError] = useState('');
   const [searched, setSearched] = useState(false);
-  const [availableCodes, setAvailableCodes] = useState([]);
-  const [loadingCodes, setLoadingCodes] = useState(true);
 
-  // Cargar códigos ORPHA disponibles al montar el componente
-  useEffect(() => {
-    const fetchCodes = async () => {
-      try {
-        const response = await patientsAPI.getDiagnosisCodes();
-        setAvailableCodes(response.data.codes || []);
-      } catch (err) {
-        console.error('Error cargando códigos ORPHA:', err);
-      } finally {
-        setLoadingCodes(false);
-      }
-    };
+  // Función de búsqueda de nomenclatura con debounce
+  const searchNomenclature = async (query) => {
+    if (query.length < 2) {
+      setOptions([]);
+      return;
+    }
 
-    fetchCodes();
-  }, []);
+    setLoadingOptions(true);
+    try {
+      const response = await api.get(`/nomenclature/search?q=${encodeURIComponent(query)}`);
+      setOptions(response.data || []);
+    } catch (err) {
+      console.error('Error buscando nomenclatura:', err);
+      setOptions([]);
+    } finally {
+      setLoadingOptions(false);
+    }
+  };
+
+  // Manejar cambio de input con debounce simple
+  const handleInputChange = (event, newInputValue) => {
+    setInputValue(newInputValue);
+
+    // Debounce simple con timeout
+    const timeoutId = setTimeout(() => {
+      searchNomenclature(newInputValue);
+    }, 300);
+
+    // Limpiar timeout previo
+    return () => clearTimeout(timeoutId);
+  };
 
   const handleSearch = async (e) => {
     e.preventDefault();
 
-    if (!diagnostico.trim()) {
-      setError('Por favor ingrese un código ORPHA');
+    if (!selectedCode && !inputValue.trim()) {
+      setError('Por favor seleccione o ingrese un código ORPHA');
       return;
     }
 
-    // Validar formato ORPHA
-    if (!/^ORPHA\d+$/i.test(diagnostico.trim())) {
-      setError('Formato inválido. Use: ORPHAxxxx (ej: ORPHA123)');
+    const searchCode = selectedCode?.code || inputValue.trim();
+
+    // Validar formato ORPHA (acepta ORPHA.XXXX o ORPHAXXXX)
+    if (!/^ORPHA\.?\d+$/i.test(searchCode)) {
+      setError('Formato inválido. Use: ORPHA.XXXX o ORPHAXXXX (ej: ORPHA.123)');
       return;
     }
 
@@ -64,9 +84,13 @@ export default function SearchByDiagnosis() {
     setSearched(true);
 
     try {
-      const response = await patientsAPI.getAll({
-        diagnostico: diagnostico.trim().toUpperCase()
+      // Normalizar formato a ORPHA.XXXX
+      const normalizedCode = searchCode.replace(/^ORPHA\.?(\d+)$/i, 'ORPHA.$1');
+
+      const response = await api.get('/patients', {
+        params: { diagnostico: normalizedCode }
       });
+
       setPatients(response.data.patients || []);
     } catch (err) {
       setError('Error buscando pacientes. Por favor intente de nuevo.');
@@ -85,22 +109,41 @@ export default function SearchByDiagnosis() {
       align: 'center'
     },
     {
-      field: 'diagnosticos',
+      field: 'diagnosticosDetalle',
       headerName: 'Diagnósticos',
       flex: 1,
-      minWidth: 300,
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, py: 1 }}>
-          {params.value.map((diag, index) => (
-            <Chip
-              key={index}
-              label={diag}
-              size="small"
-              color={diag === diagnostico.trim().toUpperCase() ? 'primary' : 'default'}
-            />
-          ))}
-        </Box>
-      )
+      minWidth: 400,
+      renderCell: (params) => {
+        const diagnosticos = params.value || params.row.diagnosticos?.map(code => ({
+          codigo: code,
+          nombre: code,
+          esPlaceholder: code === 'PENDIENTE'
+        })) || [];
+
+        const searchCode = selectedCode?.code || inputValue.trim().replace(/^ORPHA\.?(\d+)$/i, 'ORPHA.$1');
+
+        return (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, py: 1 }}>
+            {diagnosticos.map((diag, index) => {
+              const isPending = diag.esPlaceholder;
+              const isSearched = diag.codigo === searchCode;
+              const label = isPending ? diag.nombre : `${diag.codigo} - ${diag.nombre}`;
+
+              return (
+                <Tooltip key={index} title={`Código: ${diag.codigo}`} arrow>
+                  <Chip
+                    label={label}
+                    size="small"
+                    color={isSearched ? 'primary' : isPending ? 'warning' : 'default'}
+                    variant={isSearched || !isPending ? 'filled' : 'outlined'}
+                    icon={isPending ? <InfoIcon fontSize="small" /> : undefined}
+                  />
+                </Tooltip>
+              );
+            })}
+          </Box>
+        );
+      }
     },
     {
       field: 'fecha_ultimo_seguimiento',
@@ -125,34 +168,54 @@ export default function SearchByDiagnosis() {
         <Box component="form" onSubmit={handleSearch} sx={{ display: 'flex', gap: 2 }}>
           <Autocomplete
             freeSolo
-            options={availableCodes}
-            value={diagnostico}
+            options={options}
+            value={selectedCode}
             onChange={(event, newValue) => {
-              setDiagnostico(newValue || '');
+              setSelectedCode(newValue);
+              if (newValue) {
+                setInputValue(newValue.code);
+              }
             }}
-            onInputChange={(event, newInputValue) => {
-              setDiagnostico(newInputValue);
+            inputValue={inputValue}
+            onInputChange={handleInputChange}
+            getOptionLabel={(option) => {
+              if (typeof option === 'string') return option;
+              return `${option.code} - ${option.nombre}`;
             }}
-            loading={loadingCodes}
+            loading={loadingOptions}
             disabled={loading}
             fullWidth
+            filterOptions={(x) => x} // No filtrar en cliente, ya viene filtrado del servidor
+            renderOption={(props, option) => (
+              <li {...props} key={option.code}>
+                <Box>
+                  <Typography variant="body1" component="div">
+                    {option.code}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {option.nombre}
+                  </Typography>
+                </Box>
+              </li>
+            )}
             renderInput={(params) => (
               <TextField
                 {...params}
-                label="Código ORPHA"
-                placeholder="Ej: ORPHA123"
-                helperText={loadingCodes ? "Cargando códigos disponibles..." : `${availableCodes.length} códigos disponibles`}
+                label="Código ORPHA o Nombre de Enfermedad"
+                placeholder="Escribe código (ORPHA.123) o nombre de enfermedad..."
+                helperText="Escribe al menos 2 caracteres para buscar. Solo se muestran códigos ya registrados en pacientes."
                 InputProps={{
                   ...params.InputProps,
                   endAdornment: (
                     <>
-                      {loadingCodes ? <CircularProgress color="inherit" size={20} /> : null}
+                      {loadingOptions ? <CircularProgress color="inherit" size={20} /> : null}
                       {params.InputProps.endAdornment}
                     </>
                   ),
                 }}
               />
             )}
+            noOptionsText={inputValue.length < 2 ? "Escribe al menos 2 caracteres" : "No se encontraron códigos"}
           />
 
           <Button
@@ -182,7 +245,7 @@ export default function SearchByDiagnosis() {
 
             {patients.length > 0 && (
               <ExportButton
-                params={{ diagnostico: diagnostico.trim().toUpperCase() }}
+                params={{ diagnostico: selectedCode?.code || inputValue.trim() }}
                 type="patients"
                 label="Exportar Resultados"
               />
@@ -191,7 +254,7 @@ export default function SearchByDiagnosis() {
 
           {patients.length === 0 ? (
             <Alert severity="info">
-              No se encontraron pacientes con el diagnóstico {diagnostico.trim().toUpperCase()}
+              No se encontraron pacientes con el diagnóstico {selectedCode?.code || inputValue.trim()}
             </Alert>
           ) : (
             <Box sx={{ height: 600 }}>
@@ -199,10 +262,14 @@ export default function SearchByDiagnosis() {
                 rows={patients}
                 columns={columns}
                 getRowId={(row) => row.nhc}
-                pageSize={10}
-                rowsPerPageOptions={[10, 25, 50]}
+                initialState={{
+                  pagination: {
+                    paginationModel: { pageSize: 10 }
+                  }
+                }}
+                pageSizeOptions={[10, 25, 50]}
                 disableSelectionOnClick
-                rowHeight={60}
+                rowHeight={80}
               />
             </Box>
           )}
