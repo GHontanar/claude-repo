@@ -15,9 +15,12 @@ function generatePatientsXLSX(patients) {
     // Transformar datos para el formato de Excel
     const data = patients.map(patient => ({
       'NHC': patient.nhc,
-      'Diagnósticos': Array.isArray(patient.diagnosticos)
+      'Códigos ORPHA': Array.isArray(patient.diagnosticos)
         ? patient.diagnosticos.join(', ')
         : patient.diagnosticos,
+      'Nomenclatura': Array.isArray(patient.diagnosticosDetalle)
+        ? patient.diagnosticosDetalle.map(d => d.nombre).join(', ')
+        : '',
       'Fecha Último Seguimiento': patient.fecha_ultimo_seguimiento
     }));
 
@@ -27,7 +30,8 @@ function generatePatientsXLSX(patients) {
     // Configurar anchos de columnas
     worksheet['!cols'] = [
       { wch: 15 },  // NHC
-      { wch: 40 },  // Diagnósticos
+      { wch: 30 },  // Códigos ORPHA
+      { wch: 50 },  // Nomenclatura
       { wch: 25 }   // Fecha
     ];
 

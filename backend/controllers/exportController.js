@@ -5,6 +5,7 @@
 
 const Patient = require('../models/Patient');
 const { generatePatientsXLSX, generateStatsXLSX } = require('../utils/xlsxGenerator');
+const { enrichPatientsWithNomenclature } = require('../utils/orphaNomenclature');
 
 /**
  * Exportar pacientes a XLSX
@@ -38,8 +39,11 @@ exports.exportPatients = async (req, res) => {
       });
     }
 
+    // Enriquecer pacientes con nomenclatura
+    const enrichedPatients = await enrichPatientsWithNomenclature(patients);
+
     // Generar archivo XLSX
-    const buffer = generatePatientsXLSX(patients);
+    const buffer = generatePatientsXLSX(enrichedPatients);
 
     // Generar nombre de archivo con fecha actual
     const fecha = new Date().toISOString().split('T')[0];
