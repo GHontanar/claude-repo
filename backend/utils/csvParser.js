@@ -100,12 +100,12 @@ function validateAndNormalizeRow(row, index) {
     }
 
     // Validar códigos ORPHA
-    const orphaRegex = /^ORPHA\d+$/;
+    const orphaRegex = /^ORPHA\.\d+$/;
     for (const diag of diagnosticosArray) {
       if (!orphaRegex.test(diag)) {
         return {
           valid: false,
-          error: `Fila ${index + 1}: Código ORPHA inválido: ${diag}`
+          error: `Fila ${index + 1}: Código ORPHA inválido: ${diag}. Formato esperado: ORPHA.xxxx`
         };
       }
     }

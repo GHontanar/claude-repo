@@ -177,11 +177,11 @@ const validatePatientData = (req, res, next) => {
   }
 
   // Validar que todos los diagnósticos sean códigos ORPHA válidos
-  const orphaRegex = /^ORPHA\d+$/;
+  const orphaRegex = /^ORPHA\.\d+$/;
   for (const diag of diagnosticos) {
     if (!orphaRegex.test(diag)) {
       return res.status(400).json({
-        error: `Código ORPHA inválido: ${diag}. Formato esperado: ORPHAxxxx`,
+        error: `Código ORPHA inválido: ${diag}. Formato esperado: ORPHA.xxxx`,
         code: 'VALIDATION_ERROR',
         field: 'diagnosticos'
       });
