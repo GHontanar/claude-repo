@@ -15,9 +15,9 @@ FROM pacientes;
 
 -- Crear tabla temporal para almacenar los datos actualizados
 CREATE TEMPORARY TABLE IF NOT EXISTS temp_diagnosticos_actualizados (
-  nhc VARCHAR(50) PRIMARY KEY,
+  nhc VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci PRIMARY KEY,
   diagnosticos_nuevos JSON
-);
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Insertar datos actualizados en tabla temporal
 -- Convertir ORPHAXXXX -> ORPHA.XXXX (solo códigos sin punto)
