@@ -204,15 +204,28 @@ async function parseOrphaXML(xmlData) {
     console.log(`✅ XML parseado: ${disorders.length} enfermedades encontradas`);
 
     // Transformar a formato estándar
-    const nomenclature = disorders.map(disorder => ({
-      code: `ORPHA.${disorder.orphacode || disorder.orphanumber}`,
-      nombre: disorder.name || disorder.preferredterm || 'Sin nombre',
-      nombre_cientifico: disorder.synonym || null,
-      grupo_clinico: disorder.disordergroup || disorder.expertlink || null,
-      es_activo: disorder.disorderstatus !== 'Obsolete' && disorder.disorderstatus !== 'Inactive',
-      fuente: 'Orphanet',
-      version_orphanet: new Date().toISOString().slice(0, 7) // YYYY-MM
-    }));
+    const nomenclature = disorders.map(disorder => {
+      // Extraer valores, asegurándose de obtener strings
+      const extractValue = (val) => {
+        if (!val) return null;
+        if (typeof val === 'string') return val;
+        if (typeof val === 'object' && val._) return val._;
+        if (typeof val === 'object' && val.toString) return val.toString();
+        return String(val);
+      };
+
+      const nombre = extractValue(disorder.name || disorder.preferredterm) || 'Sin nombre';
+
+      return {
+        code: `ORPHA.${disorder.orphacode || disorder.orphanumber}`,
+        nombre: nombre,
+        nombre_cientifico: extractValue(disorder.synonym),
+        grupo_clinico: extractValue(disorder.disordergroup || disorder.expertlink),
+        es_activo: disorder.disorderstatus !== 'Obsolete' && disorder.disorderstatus !== 'Inactive',
+        fuente: 'Orphanet',
+        version_orphanet: new Date().toISOString().slice(0, 7) // YYYY-MM
+      };
+    });
 
     return nomenclature;
   } catch (error) {
