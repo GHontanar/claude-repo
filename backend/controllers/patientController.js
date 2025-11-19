@@ -4,6 +4,7 @@
  */
 
 const Patient = require('../models/Patient');
+const { enrichPatientsWithNomenclature } = require('../utils/orphaNomenclature');
 
 /**
  * Buscar paciente por NHC
@@ -22,7 +23,10 @@ exports.getByNHC = async (req, res) => {
       });
     }
 
-    res.json(patient);
+    // Enriquecer con nomenclatura
+    const enrichedPatient = await enrichPatientsWithNomenclature(patient);
+
+    res.json(enrichedPatient);
   } catch (error) {
     console.error('Error buscando paciente:', error);
     res.status(500).json({
@@ -60,8 +64,11 @@ exports.getAll = async (req, res) => {
         parsedOffset
       );
 
+      // Enriquecer con nomenclatura
+      const enrichedPatients = await enrichPatientsWithNomenclature(patients);
+
       result = {
-        patients,
+        patients: enrichedPatients,
         pagination: {
           limit: parsedLimit,
           offset: parsedOffset,
@@ -77,8 +84,11 @@ exports.getAll = async (req, res) => {
         order
       );
 
+      // Enriquecer con nomenclatura
+      const enrichedPatients = await enrichPatientsWithNomenclature(result.patients);
+
       result = {
-        patients: result.patients,
+        patients: enrichedPatients,
         pagination: {
           total: result.total,
           limit: parsedLimit,
