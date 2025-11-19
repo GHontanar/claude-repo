@@ -20,7 +20,8 @@ module.exports = {
    * @returns {boolean} true si es placeholder
    */
   isPlaceholder: function(code) {
-    return this.PLACEHOLDER_CODES.includes(code);
+    const PLACEHOLDER_CODES = ['PENDIENTE', ''];
+    return code && PLACEHOLDER_CODES.includes(code);
   },
 
   /**
