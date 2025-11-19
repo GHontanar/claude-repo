@@ -5,6 +5,7 @@
 
 const Patient = require('../models/Patient');
 const { processFile } = require('../utils/csvParser');
+const { PLACEHOLDER_CODES, isPlaceholder, isRealOrphaCode } = require('../config/constants');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -60,9 +61,21 @@ exports.importFile = async (req, res) => {
         if (existingPatient) {
           // Paciente existe: combinar diagnósticos y actualizar fecha si es más reciente
 
-          // Combinar diagnósticos sin duplicados
-          const currentDiagnosticos = existingPatient.diagnosticos;
+          let currentDiagnosticos = existingPatient.diagnosticos;
           const newDiagnosticos = row.diagnosticos;
+
+          // LÓGICA DE PLACEHOLDER:
+          // Si el paciente tiene placeholders y llegan códigos ORPHA reales,
+          // BORRAR los placeholders
+          const hasPlaceholders = currentDiagnosticos.some(isPlaceholder);
+          const hasRealOrphaCodes = newDiagnosticos.some(isRealOrphaCode);
+
+          if (hasPlaceholders && hasRealOrphaCodes) {
+            // Borrar placeholders de diagnósticos actuales
+            currentDiagnosticos = currentDiagnosticos.filter(code => !isPlaceholder(code));
+          }
+
+          // Combinar diagnósticos sin duplicados
           const mergedDiagnosticos = [...new Set([...currentDiagnosticos, ...newDiagnosticos])];
 
           // Comparar fechas
@@ -78,7 +91,8 @@ exports.importFile = async (req, res) => {
             pacientesActualizados++;
           } else {
             // Solo actualizar diagnósticos, mantener fecha existente
-            if (mergedDiagnosticos.length > currentDiagnosticos.length) {
+            if (mergedDiagnosticos.length > currentDiagnosticos.length ||
+                (hasPlaceholders && hasRealOrphaCodes)) {
               await Patient.update(row.nhc, {
                 diagnosticos: mergedDiagnosticos,
                 fecha_ultimo_seguimiento: existingPatient.fecha_ultimo_seguimiento
