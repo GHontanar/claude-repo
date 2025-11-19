@@ -60,7 +60,7 @@ CREATE INDEX idx_fecha ON pacientes(fecha_ultimo_seguimiento);
 -- =====================================================
 
 INSERT INTO usuarios (username, password, rol) VALUES
-('admin', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'admin')
+('admin', '$2b$10$JiZS3MKuHdr1ZDL1ICHzgObjgJcsZad.kAPIUwimteLa.V66jGJla', 'admin')
 ON DUPLICATE KEY UPDATE username=username;
 
 -- =====================================================
