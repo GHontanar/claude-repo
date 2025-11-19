@@ -19,11 +19,8 @@ class Patient {
       );
 
       if (rows[0]) {
-        // Parsear JSON de diagnósticos
-        return {
-          ...rows[0],
-          diagnosticos: JSON.parse(rows[0].diagnosticos)
-        };
+        // MySQL driver ya parsea automáticamente las columnas JSON
+        return rows[0];
       }
       return null;
     } catch (error) {
@@ -53,11 +50,8 @@ class Patient {
         [codigoOrpha, parsedLimit, parsedOffset]
       );
 
-      // Parsear JSON de diagnósticos
-      return rows.map(row => ({
-        ...row,
-        diagnosticos: JSON.parse(row.diagnosticos)
-      }));
+      // MySQL driver ya parsea automáticamente las columnas JSON
+      return rows;
     } catch (error) {
       throw new Error(`Error buscando por diagnóstico: ${error.message}`);
     }
@@ -96,14 +90,9 @@ class Patient {
       // Obtener total de pacientes
       const [countRows] = await pool.execute('SELECT COUNT(*) as total FROM pacientes');
 
-      // Parsear JSON de diagnósticos
-      const patients = rows.map(row => ({
-        ...row,
-        diagnosticos: JSON.parse(row.diagnosticos)
-      }));
-
+      // MySQL driver ya parsea automáticamente las columnas JSON
       return {
-        patients,
+        patients: rows,
         total: countRows[0].total
       };
     } catch (error) {
@@ -222,10 +211,8 @@ class Patient {
         [fechaDesde, fechaHasta]
       );
 
-      return rows.map(row => ({
-        ...row,
-        diagnosticos: JSON.parse(row.diagnosticos)
-      }));
+      // MySQL driver ya parsea automáticamente las columnas JSON
+      return rows;
     } catch (error) {
       throw new Error(`Error buscando por rango de fechas: ${error.message}`);
     }
