@@ -673,13 +673,221 @@ App
 
 ---
 
+## Sistema de Nomenclatura ORPHA
+
+### Descripción General
+El sistema incluye un nomenclador completo (~9000 códigos) de Orphanet para convertir códigos ORPHA en nombres legibles de enfermedades raras.
+
+### Características Principales
+- **Cobertura completa**: ~9000 códigos de Orphanet en español
+- **Funcionamiento offline**: Sin dependencias externas en runtime
+- **Autocomplete inteligente**: Solo muestra códigos ya registrados en pacientes
+- **Actualización anual**: Script automatizado para sincronizar con Orphanet
+- **Multiservicio**: Escalable para diferentes especialidades médicas
+
+### Arquitectura
+
+```
+┌─────────────────────────────────────────────┐
+│  Orphacode.org (Fuente de Datos Externa)   │
+│  https://www.orphadata.com                  │
+└──────────────────┬──────────────────────────┘
+                   │ (Importación Anual)
+                   ▼
+┌─────────────────────────────────────────────┐
+│  Tabla: orpha_nomenclatura                  │
+│  - code: VARCHAR(20) PK                     │
+│  - nombre: VARCHAR(500)                     │
+│  - es_activo: BOOLEAN                       │
+│  - version_orphanet: VARCHAR(20)            │
+│  (~9000 registros)                          │
+└──────────────────┬──────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────┐
+│  API Backend                                │
+│  GET /api/nomenclature/search?q=fibro       │
+│  - Busca en códigos de pacientes           │
+│  - Retorna: {code, nombre}[]                │
+└──────────────────┬──────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────┐
+│  Frontend - Autocomplete                    │
+│  - Búsqueda por código o nombre            │
+│  - Solo códigos existentes en BD            │
+│  - Visualización: ORPHA.123 - Enfermedad   │
+└─────────────────────────────────────────────┘
+```
+
+### Tabla de Base de Datos
+
+```sql
+CREATE TABLE orpha_nomenclatura (
+  code VARCHAR(20) PRIMARY KEY,
+  nombre VARCHAR(500) NOT NULL,
+  nombre_cientifico VARCHAR(500) DEFAULT NULL,
+  grupo_clinico VARCHAR(200) DEFAULT NULL,
+  es_activo BOOLEAN DEFAULT TRUE,
+  fuente VARCHAR(50) DEFAULT 'Orphanet',
+  version_orphanet VARCHAR(20) DEFAULT NULL,
+  fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  INDEX idx_nombre (nombre),
+  FULLTEXT INDEX idx_busqueda_texto (nombre, code)
+);
+```
+
+### Formato de Códigos
+- **Formato actual**: `ORPHA.XXXX` (con punto)
+- **Ejemplo**: `ORPHA.123` → "Fibrosis Quística"
+- **Placeholder**: `PENDIENTE` → "Pendiente de Diagnóstico"
+- **Formato antiguo**: `ORPHAXXXX` (migrado automáticamente)
+
+### Lógica de Placeholder
+Los pacientes sin diagnóstico confirmado pueden tener el código `PENDIENTE`.
+
+**Comportamiento automático:**
+- Si un paciente tiene `PENDIENTE` y se importa un código ORPHA real → `PENDIENTE` se elimina automáticamente
+- Si un paciente tiene múltiples códigos ORPHA → `PENDIENTE` NO se elimina (diagnósticos múltiples permitidos)
+- Esto garantiza que los pacientes en seguimiento inicial se marquen correctamente hasta su diagnóstico definitivo
+
+### Enriquecimiento de Respuestas
+Todas las respuestas de la API de pacientes incluyen el campo `diagnosticosDetalle`:
+
+```json
+{
+  "nhc": "12345",
+  "diagnosticos": ["ORPHA.123", "ORPHA.456"],
+  "diagnosticosDetalle": [
+    {
+      "codigo": "ORPHA.123",
+      "nombre": "Fibrosis Quística",
+      "esPlaceholder": false
+    },
+    {
+      "codigo": "ORPHA.456",
+      "nombre": "Síndrome de Marfan",
+      "esPlaceholder": false
+    }
+  ],
+  "fecha_ultimo_seguimiento": "2024-11-19"
+}
+```
+
+### Exportación Excel
+Los archivos Excel exportados incluyen una columna adicional "Nomenclatura" con los nombres legibles:
+
+| NHC | Códigos ORPHA | Nomenclatura | Fecha Último Seguimiento |
+|-----|---------------|--------------|--------------------------|
+| 12345 | ORPHA.123, ORPHA.456 | Fibrosis Quística, Síndrome de Marfan | 2024-11-19 |
+
+### Actualización Anual
+
+**Script:** `scripts/update_orpha_nomenclature.sh`
+
+```bash
+# Ejecutar actualización
+./scripts/update_orpha_nomenclature.sh
+
+# El script automáticamente:
+# 1. Crea backup de nomenclatura actual
+# 2. Descarga última versión de Orphanet
+# 3. Actualiza base de datos
+# 4. Verifica importación
+# 5. Si falla, restaura backup
+```
+
+**Frecuencia recomendada:** 1-2 veces al año (Orphanet publica en Julio y Diciembre)
+
+**Responsable:** Project Manager o Administrador del Sistema
+
+### Endpoints de API
+
+#### GET /api/nomenclature/search
+Buscar nomenclaturas (autocomplete).
+```bash
+GET /api/nomenclature/search?q=fibro
+
+# Response:
+[
+  { "code": "ORPHA.123", "nombre": "Fibrosis Quística" }
+]
+```
+
+#### GET /api/nomenclature/stats
+Estadísticas del nomenclador.
+```bash
+GET /api/nomenclature/stats
+
+# Response:
+{
+  "total_nomenclaturas": 9123,
+  "orphanet_count": 9122,
+  "sistema_count": 1,
+  "version_actual": "2024-12"
+}
+```
+
+#### GET /api/nomenclature/in-use
+Códigos ORPHA en uso con estadísticas.
+```bash
+GET /api/nomenclature/in-use
+
+# Response:
+{
+  "total": 45,
+  "codes": [
+    {
+      "code": "ORPHA.123",
+      "nombre": "Fibrosis Quística",
+      "patient_count": 12
+    }
+  ]
+}
+```
+
+### Frontend - Autocomplete
+El componente `SearchByDiagnosis` incluye autocomplete inteligente:
+
+**Características:**
+- Búsqueda por código ORPHA o nombre de enfermedad
+- Debounce de 300ms para optimizar requests
+- Solo muestra códigos que existen en pacientes registrados
+- Visualización: Código en línea superior, nombre en inferior
+- Mínimo 2 caracteres para iniciar búsqueda
+
+**Comportamiento:**
+```
+Usuario escribe: "fibro"
+→ API: GET /nomenclature/search?q=fibro
+→ Retorna solo códigos en BD de pacientes
+→ Muestra: "ORPHA.123 - Fibrosis Quística"
+
+Usuario selecciona y busca
+→ API: GET /patients?diagnostico=ORPHA.123
+→ Muestra pacientes con ese diagnóstico
+```
+
+### Beneficios del Sistema
+
+1. **Usabilidad mejorada**: Médicos ven nombres legibles, no solo códigos
+2. **Búsqueda intuitiva**: Buscar por nombre de enfermedad, no memorizar códigos
+3. **Reducción de errores**: Validación automática de códigos
+4. **Escalabilidad**: Soporta cualquier especialidad médica
+5. **Mantenimiento simple**: Actualización anual automatizada
+6. **Trazabilidad**: Versión de Orphanet registrada en BD
+
+---
+
 ## Conclusión
 
 Esta arquitectura proporciona:
 - ✅ **Seguridad**: Múltiples capas de protección
 - ✅ **Mantenibilidad**: Código modular y documentado
 - ✅ **Escalabilidad**: Preparado para crecer
-- ✅ **Usabilidad**: Interfaz simple para usuarios médicos
-- ✅ **Privacidad**: Sin conexiones externas, datos locales
+- ✅ **Usabilidad**: Interfaz simple para usuarios médicos con nomenclatura legible
+- ✅ **Privacidad**: Sin conexiones externas en runtime, datos locales
+- ✅ **Actualizable**: Sistema de nomenclatura sincronizado con Orphanet
 
 El sistema está diseñado para ser mantenido por ingenieros de sistemas del hospital sin conocimiento previo del proyecto.
