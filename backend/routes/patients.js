@@ -15,6 +15,9 @@ router.use(verifyToken);
 // GET /api/patients/stats - Obtener estadísticas (debe ir antes de /:nhc)
 router.get('/stats', patientController.getStatistics);
 
+// GET /api/patients/diagnosis-codes - Obtener códigos ORPHA únicos (debe ir antes de /:nhc)
+router.get('/diagnosis-codes', patientController.getDiagnosisCodes);
+
 // GET /api/patients - Listar pacientes con filtros
 router.get('/', patientController.getAll);
 

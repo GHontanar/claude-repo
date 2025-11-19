@@ -192,3 +192,23 @@ exports.update = async (req, res) => {
     });
   }
 };
+
+/**
+ * Obtener códigos de diagnóstico únicos
+ * GET /api/patients/diagnosis-codes
+ */
+exports.getDiagnosisCodes = async (req, res) => {
+  try {
+    const codes = await Patient.getUniqueDiagnosisCodes();
+    res.json({
+      codes,
+      total: codes.length
+    });
+  } catch (error) {
+    console.error('Error obteniendo códigos de diagnóstico:', error);
+    res.status(500).json({
+      error: 'Error obteniendo códigos de diagnóstico',
+      code: 'SERVER_ERROR'
+    });
+  }
+};

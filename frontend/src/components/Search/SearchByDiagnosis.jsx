@@ -3,7 +3,7 @@
  * Búsqueda de pacientes por código ORPHA
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Paper,
   TextField,
@@ -12,7 +12,8 @@ import {
   Typography,
   Alert,
   CircularProgress,
-  Chip
+  Chip,
+  Autocomplete
 } from '@mui/material';
 import { Search, LocalHospital } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
@@ -25,6 +26,24 @@ export default function SearchByDiagnosis() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [searched, setSearched] = useState(false);
+  const [availableCodes, setAvailableCodes] = useState([]);
+  const [loadingCodes, setLoadingCodes] = useState(true);
+
+  // Cargar códigos ORPHA disponibles al montar el componente
+  useEffect(() => {
+    const fetchCodes = async () => {
+      try {
+        const response = await patientsAPI.getDiagnosisCodes();
+        setAvailableCodes(response.data.codes || []);
+      } catch (err) {
+        console.error('Error cargando códigos ORPHA:', err);
+      } finally {
+        setLoadingCodes(false);
+      }
+    };
+
+    fetchCodes();
+  }, []);
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -104,14 +123,36 @@ export default function SearchByDiagnosis() {
 
       <Paper sx={{ p: 3, mb: 3 }}>
         <Box component="form" onSubmit={handleSearch} sx={{ display: 'flex', gap: 2 }}>
-          <TextField
-            label="Código ORPHA"
+          <Autocomplete
+            freeSolo
+            options={availableCodes}
             value={diagnostico}
-            onChange={(e) => setDiagnostico(e.target.value)}
-            fullWidth
-            placeholder="Ej: ORPHA123"
+            onChange={(event, newValue) => {
+              setDiagnostico(newValue || '');
+            }}
+            onInputChange={(event, newInputValue) => {
+              setDiagnostico(newInputValue);
+            }}
+            loading={loadingCodes}
             disabled={loading}
-            helperText="Formato: ORPHAxxxx"
+            fullWidth
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Código ORPHA"
+                placeholder="Ej: ORPHA123"
+                helperText={loadingCodes ? "Cargando códigos disponibles..." : `${availableCodes.length} códigos disponibles`}
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {loadingCodes ? <CircularProgress color="inherit" size={20} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
           />
 
           <Button

@@ -74,6 +74,7 @@ export const patientsAPI = {
   getByNHC: (nhc) => api.get(`/patients/${nhc}`),
   getAll: (params) => api.get('/patients', { params }),
   getStats: () => api.get('/patients/stats'),
+  getDiagnosisCodes: () => api.get('/patients/diagnosis-codes'),
   create: (patientData) => api.post('/patients', patientData),
   update: (nhc, patientData) => api.put(`/patients/${nhc}`, patientData)
 };

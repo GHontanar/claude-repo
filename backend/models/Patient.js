@@ -219,6 +219,26 @@ class Patient {
       throw new Error(`Error buscando por rango de fechas: ${error.message}`);
     }
   }
+
+  /**
+   * Obtener todos los códigos ORPHA únicos en la base de datos
+   * @returns {Array} Lista de códigos ORPHA ordenados
+   */
+  static async getUniqueDiagnosisCodes() {
+    try {
+      const [rows] = await pool.execute(
+        `SELECT DISTINCT diag as codigo
+         FROM pacientes,
+         JSON_TABLE(diagnosticos, '$[*]' COLUMNS(diag VARCHAR(20) PATH '$')) AS jt
+         ORDER BY diag`
+      );
+
+      // Retornar solo el array de códigos
+      return rows.map(row => row.codigo);
+    } catch (error) {
+      throw new Error(`Error obteniendo códigos de diagnóstico: ${error.message}`);
+    }
+  }
 }
 
 module.exports = Patient;
