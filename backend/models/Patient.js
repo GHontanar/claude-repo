@@ -40,13 +40,17 @@ class Patient {
    */
   static async findByDiagnostico(codigoOrpha, limit = 100, offset = 0) {
     try {
+      // Parsear parámetros numéricos
+      const parsedLimit = parseInt(limit) || 100;
+      const parsedOffset = parseInt(offset) || 0;
+
       const [rows] = await pool.execute(
         `SELECT nhc, diagnosticos, fecha_ultimo_seguimiento
          FROM pacientes
          WHERE JSON_CONTAINS(diagnosticos, JSON_QUOTE(?))
          ORDER BY fecha_ultimo_seguimiento DESC
          LIMIT ? OFFSET ?`,
-        [codigoOrpha, limit, offset]
+        [codigoOrpha, parsedLimit, parsedOffset]
       );
 
       // Parsear JSON de diagnósticos
@@ -69,6 +73,10 @@ class Patient {
    */
   static async findAll(limit = 100, offset = 0, sort = 'fecha_ultimo_seguimiento', order = 'desc') {
     try {
+      // Parsear y validar parámetros numéricos
+      const parsedLimit = parseInt(limit) || 100;
+      const parsedOffset = parseInt(offset) || 0;
+
       // Validar parámetros de ordenamiento
       const validSortFields = ['nhc', 'fecha_ultimo_seguimiento', 'created_at'];
       const validOrders = ['asc', 'desc'];
@@ -82,7 +90,7 @@ class Patient {
          FROM pacientes
          ORDER BY ${sortField} ${sortOrder}
          LIMIT ? OFFSET ?`,
-        [limit, offset]
+        [parsedLimit, parsedOffset]
       );
 
       // Obtener total de pacientes
