@@ -39,9 +39,12 @@ class OrphaNomenclature {
 
       if (validCodes.length === 0) return {};
 
+      // Crear placeholders dinámicos (?, ?, ?)
+      const placeholders = validCodes.map(() => '?').join(',');
+
       const [rows] = await pool.execute(
-        'SELECT code, nombre FROM orpha_nomenclatura WHERE code IN (?)',
-        [validCodes]
+        `SELECT code, nombre FROM orpha_nomenclatura WHERE code IN (${placeholders})`,
+        validCodes
       );
 
       // Convertir a map para fácil lookup
