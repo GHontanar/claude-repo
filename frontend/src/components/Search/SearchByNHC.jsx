@@ -14,9 +14,10 @@ import {
   Typography,
   Chip,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Tooltip
 } from '@mui/material';
-import { Search, Person } from '@mui/icons-material';
+import { Search, Person, Info as InfoIcon } from '@mui/icons-material';
 import { patientsAPI } from '../../services/api';
 
 export default function SearchByNHC() {
@@ -106,14 +107,25 @@ export default function SearchByNHC() {
                 Diagnósticos
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
-                {patient.diagnosticos.map((diag, index) => (
-                  <Chip
-                    key={index}
-                    label={diag}
-                    color="primary"
-                    variant="outlined"
-                  />
-                ))}
+                {(patient.diagnosticosDetalle || patient.diagnosticos?.map(code => ({
+                  codigo: code,
+                  nombre: code,
+                  esPlaceholder: code === 'PENDIENTE'
+                }))).map((diag, index) => {
+                  const isPending = diag.esPlaceholder;
+                  const label = isPending ? diag.nombre : `${diag.codigo} - ${diag.nombre}`;
+
+                  return (
+                    <Tooltip key={index} title={`Código: ${diag.codigo}`} arrow>
+                      <Chip
+                        label={label}
+                        color={isPending ? 'warning' : 'primary'}
+                        variant={isPending ? 'outlined' : 'filled'}
+                        icon={isPending ? <InfoIcon fontSize="small" /> : undefined}
+                      />
+                    </Tooltip>
+                  );
+                })}
               </Box>
 
               <Typography variant="body2" color="text.secondary" gutterBottom>

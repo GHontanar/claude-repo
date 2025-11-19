@@ -10,9 +10,10 @@ import {
   Typography,
   Alert,
   CircularProgress,
-  Chip
+  Chip,
+  Tooltip
 } from '@mui/material';
-import { List as ListIcon } from '@mui/icons-material';
+import { List as ListIcon, Info as InfoIcon } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
 import { patientsAPI } from '../../services/api';
 import ExportButton from '../Common/ExportButton';
@@ -60,22 +61,38 @@ export default function PatientList() {
       align: 'center'
     },
     {
-      field: 'diagnosticos',
+      field: 'diagnosticosDetalle',
       headerName: 'Diagnósticos',
       flex: 1,
-      minWidth: 300,
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, py: 1 }}>
-          {params.value.map((diag, index) => (
-            <Chip
-              key={index}
-              label={diag}
-              size="small"
-              variant="outlined"
-            />
-          ))}
-        </Box>
-      )
+      minWidth: 400,
+      renderCell: (params) => {
+        const diagnosticos = params.value || params.row.diagnosticos?.map(code => ({
+          codigo: code,
+          nombre: code,
+          esPlaceholder: code === 'PENDIENTE'
+        })) || [];
+
+        return (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, py: 1 }}>
+            {diagnosticos.map((diag, index) => {
+              const isPending = diag.esPlaceholder;
+              const label = isPending ? diag.nombre : `${diag.codigo} - ${diag.nombre}`;
+
+              return (
+                <Tooltip key={index} title={`Código: ${diag.codigo}`} arrow>
+                  <Chip
+                    label={label}
+                    size="small"
+                    color={isPending ? 'warning' : 'primary'}
+                    variant={isPending ? 'outlined' : 'filled'}
+                    icon={isPending ? <InfoIcon fontSize="small" /> : undefined}
+                  />
+                </Tooltip>
+              );
+            })}
+          </Box>
+        );
+      }
     },
     {
       field: 'fecha_ultimo_seguimiento',
