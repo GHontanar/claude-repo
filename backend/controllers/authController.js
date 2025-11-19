@@ -17,18 +17,7 @@ exports.login = async (req, res) => {
     // Buscar usuario
     const user = await User.findByUsername(username);
 
-    // DEBUG: Log para diagnóstico
-    console.log('=== DEBUG LOGIN ===');
-    console.log('Username buscado:', username);
-    console.log('Usuario encontrado:', user ? 'SÍ' : 'NO');
-    if (user) {
-      console.log('Username DB:', user.username);
-      console.log('Hash en DB:', user.password);
-      console.log('Password recibida:', password);
-    }
-
     if (!user) {
-      console.log('ERROR: Usuario no encontrado');
       return res.status(401).json({
         error: 'Usuario o contraseña incorrectos'
       });
@@ -37,11 +26,7 @@ exports.login = async (req, res) => {
     // Verificar contraseña
     const isPasswordValid = await User.verifyPassword(password, user.password);
 
-    console.log('Resultado bcrypt.compare:', isPasswordValid);
-    console.log('==================');
-
     if (!isPasswordValid) {
-      console.log('ERROR: Contraseña incorrecta');
       return res.status(401).json({
         error: 'Usuario o contraseña incorrectos'
       });
