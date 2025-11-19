@@ -41,13 +41,15 @@ class Patient {
       const parsedLimit = parseInt(limit) || 100;
       const parsedOffset = parseInt(offset) || 0;
 
+      // LIMIT y OFFSET no pueden usar placeholders en prepared statements
+      // Usamos interpolación directa después de validar que son números
       const [rows] = await pool.execute(
         `SELECT nhc, diagnosticos, fecha_ultimo_seguimiento
          FROM pacientes
          WHERE JSON_CONTAINS(diagnosticos, JSON_QUOTE(?))
          ORDER BY fecha_ultimo_seguimiento DESC
-         LIMIT ? OFFSET ?`,
-        [codigoOrpha, parsedLimit, parsedOffset]
+         LIMIT ${parsedLimit} OFFSET ${parsedOffset}`,
+        [codigoOrpha]
       );
 
       // MySQL driver ya parsea automáticamente las columnas JSON
@@ -78,13 +80,13 @@ class Patient {
       const sortField = validSortFields.includes(sort) ? sort : 'fecha_ultimo_seguimiento';
       const sortOrder = validOrders.includes(order.toLowerCase()) ? order.toUpperCase() : 'DESC';
 
-      // Obtener pacientes
+      // LIMIT y OFFSET no pueden usar placeholders en prepared statements
+      // Usamos interpolación directa después de validar que son números
       const [rows] = await pool.execute(
         `SELECT nhc, diagnosticos, fecha_ultimo_seguimiento
          FROM pacientes
          ORDER BY ${sortField} ${sortOrder}
-         LIMIT ? OFFSET ?`,
-        [parsedLimit, parsedOffset]
+         LIMIT ${parsedLimit} OFFSET ${parsedOffset}`
       );
 
       // Obtener total de pacientes
