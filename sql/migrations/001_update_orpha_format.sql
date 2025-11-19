@@ -7,110 +7,82 @@
 
 USE hospital_patients;
 
--- Crear procedimiento temporal para migración
-DELIMITER //
-
-DROP PROCEDURE IF EXISTS migrate_orpha_format //
-
-CREATE PROCEDURE migrate_orpha_format()
-BEGIN
-  DECLARE done INT DEFAULT FALSE;
-  DECLARE v_nhc VARCHAR(50);
-  DECLARE v_diagnosticos JSON;
-  DECLARE v_diagnosticos_actualizados JSON;
-
-  -- Cursor para iterar sobre todos los pacientes
-  DECLARE cur CURSOR FOR SELECT nhc, diagnosticos FROM pacientes;
-  DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
-
-  -- Variables de control
-  DECLARE total_pacientes INT DEFAULT 0;
-  DECLARE pacientes_actualizados INT DEFAULT 0;
-
-  -- Contar total de pacientes
-  SELECT COUNT(*) INTO total_pacientes FROM pacientes;
-
-  SELECT CONCAT('Iniciando migración de ', total_pacientes, ' pacientes...') as 'Estado';
-
-  -- Deshabilitar constraint temporalmente para evitar problemas
-  SET @original_sql_mode = @@SESSION.sql_mode;
-  SET SESSION sql_mode = REPLACE(@@SESSION.sql_mode, 'STRICT_TRANS_TABLES', '');
-
-  OPEN cur;
-
-  read_loop: LOOP
-    FETCH cur INTO v_nhc, v_diagnosticos;
-
-    IF done THEN
-      LEAVE read_loop;
-    END IF;
-
-    -- Transformar cada elemento del array JSON
-    -- Convertir ORPHAXXXX -> ORPHA.XXXX (solo si empieza con ORPHA y no tiene punto)
-    SET v_diagnosticos_actualizados = (
-      SELECT JSON_ARRAYAGG(
-        CASE
-          WHEN codigo REGEXP '^ORPHA[0-9]+$' THEN
-            CONCAT('ORPHA.', SUBSTRING(codigo, 6))
-          ELSE
-            codigo
-        END
-      )
-      FROM JSON_TABLE(
-        v_diagnosticos,
-        '$[*]' COLUMNS(codigo VARCHAR(50) PATH '$')
-      ) AS jt
-    );
-
-    -- Actualizar el paciente si hubo cambios
-    IF v_diagnosticos_actualizados != v_diagnosticos THEN
-      UPDATE pacientes
-      SET diagnosticos = v_diagnosticos_actualizados
-      WHERE nhc = v_nhc;
-
-      SET pacientes_actualizados = pacientes_actualizados + 1;
-    END IF;
-
-  END LOOP;
-
-  CLOSE cur;
-
-  -- Restaurar sql_mode original
-  SET SESSION sql_mode = @original_sql_mode;
-
-  -- Mostrar resumen
-  SELECT
-    total_pacientes as 'Total Pacientes',
-    pacientes_actualizados as 'Pacientes Actualizados',
-    (total_pacientes - pacientes_actualizados) as 'Sin Cambios';
-
-END //
-
-DELIMITER ;
-
--- Ejecutar migración
-CALL migrate_orpha_format();
-
--- Validar migración
+-- Mostrar estado inicial
 SELECT
-  'Validación de migración' as 'Etapa',
-  COUNT(*) as 'Total',
-  SUM(CASE
-    WHEN JSON_CONTAINS(diagnosticos, JSON_QUOTE('ORPHA%')) THEN 1
-    ELSE 0
-  END) as 'Posibles_Formato_Antiguo'
+  'Estado inicial' as 'Etapa',
+  COUNT(*) as 'Total Pacientes'
+FROM pacientes;
+
+-- Crear tabla temporal para almacenar los datos actualizados
+CREATE TEMPORARY TABLE IF NOT EXISTS temp_diagnosticos_actualizados (
+  nhc VARCHAR(50) PRIMARY KEY,
+  diagnosticos_nuevos JSON
+);
+
+-- Insertar datos actualizados en tabla temporal
+-- Convertir ORPHAXXXX -> ORPHA.XXXX (solo códigos sin punto)
+INSERT INTO temp_diagnosticos_actualizados (nhc, diagnosticos_nuevos)
+SELECT
+  p.nhc,
+  (
+    SELECT JSON_ARRAYAGG(
+      CASE
+        WHEN codigo REGEXP '^ORPHA[0-9]+$' THEN
+          CONCAT('ORPHA.', SUBSTRING(codigo, 6))
+        ELSE
+          codigo
+      END
+    )
+    FROM JSON_TABLE(
+      p.diagnosticos,
+      '$[*]' COLUMNS(codigo VARCHAR(50) PATH '$')
+    ) AS jt
+  ) as diagnosticos_nuevos
+FROM pacientes p;
+
+-- Mostrar cuántos pacientes serán actualizados
+SELECT
+  'Pacientes a actualizar' as 'Etapa',
+  COUNT(*) as 'Cantidad'
+FROM temp_diagnosticos_actualizados t
+JOIN pacientes p ON t.nhc = p.nhc
+WHERE t.diagnosticos_nuevos != p.diagnosticos;
+
+-- Realizar la actualización
+UPDATE pacientes p
+INNER JOIN temp_diagnosticos_actualizados t ON p.nhc = t.nhc
+SET p.diagnosticos = t.diagnosticos_nuevos
+WHERE t.diagnosticos_nuevos != p.diagnosticos;
+
+-- Mostrar resultados
+SELECT
+  'Migración completada' as 'Etapa',
+  ROW_COUNT() as 'Pacientes actualizados';
+
+-- Validar que no quedan códigos en formato antiguo
+SELECT
+  'Validación final' as 'Etapa',
+  COUNT(*) as 'Total Pacientes',
+  SUM(
+    CASE
+      WHEN JSON_SEARCH(diagnosticos, 'one', 'ORPHA%', NULL, '$[*]') IS NOT NULL
+         AND JSON_SEARCH(diagnosticos, 'one', 'ORPHA.%', NULL, '$[*]') IS NULL
+      THEN 1
+      ELSE 0
+    END
+  ) as 'Formato_Antiguo_Restante'
 FROM pacientes;
 
 -- Mostrar algunos ejemplos después de migración
 SELECT
+  'Ejemplos actualizados' as 'Etapa',
   nhc,
-  diagnosticos,
-  'Formato actualizado' as estado
+  diagnosticos
 FROM pacientes
 LIMIT 5;
 
--- Limpiar procedimiento temporal
-DROP PROCEDURE IF EXISTS migrate_orpha_format;
+-- Limpiar tabla temporal
+DROP TEMPORARY TABLE IF EXISTS temp_diagnosticos_actualizados;
 
 -- =====================================================
 -- Fin de migración
