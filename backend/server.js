@@ -13,6 +13,7 @@ const userRoutes = require('./routes/users');
 const patientRoutes = require('./routes/patients');
 const importRoutes = require('./routes/import');
 const exportRoutes = require('./routes/export');
+const nomenclatureRoutes = require('./routes/nomenclature');
 
 // Crear aplicación Express
 const app = express();
@@ -61,6 +62,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/export', exportRoutes);
+app.use('/api/nomenclature', nomenclatureRoutes);
 
 // Ruta por defecto (404)
 app.use('*', (req, res) => {
