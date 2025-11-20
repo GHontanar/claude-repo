@@ -58,7 +58,7 @@ export default function Navbar() {
     <AppBar position="static">
       <Toolbar>
         <Typography variant="h6" component="div" sx={{ flexGrow: 0, mr: 4 }}>
-          Sistema de Pacientes
+          Base de datos de pacientes de Hematología
         </Typography>
 
         <Box sx={{ flexGrow: 1, display: 'flex', gap: 1 }}>

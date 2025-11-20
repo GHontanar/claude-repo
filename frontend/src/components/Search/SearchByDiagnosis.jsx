@@ -203,7 +203,7 @@ export default function SearchByDiagnosis() {
                 {...params}
                 label="Código ORPHA o Nombre de Enfermedad"
                 placeholder="Escribe código (ORPHA.123) o nombre de enfermedad..."
-                helperText="Escribe al menos 2 caracteres para buscar. Solo se muestran códigos ya registrados en pacientes."
+                helperText="Escribe al menos 2 caracteres para buscar. Sólo se muestran códigos ya registrados en pacientes."
                 InputProps={{
                   ...params.InputProps,
                   endAdornment: (
